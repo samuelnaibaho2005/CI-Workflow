@@ -30,8 +30,8 @@ jobs:
     - name: Run MLflow Project
       run: |
         cd MLProject
-        # --no-conda: gunakan env python yang sudah diinstall di step sebelumnya agar lebih cepat
-        mlflow run . --no-conda --experiment-name nutrition_clustering_ci
+        # --env-manager=local: gunakan env python yang sudah diinstall di step sebelumnya (pengganti --no-conda di MLflow v2+)
+        mlflow run . --env-manager=local --experiment-name nutrition_clustering_ci
 
     # 5. Ambil Run ID untuk Build Docker
     - name: Get Run ID
