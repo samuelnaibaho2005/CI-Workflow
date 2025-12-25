@@ -1,0 +1,80 @@
+name: MLflow CI/CD Workflow
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 1. Checkout kode dari repository
+    - uses: actions/checkout@v3
+
+    # 2. Setup Python environment
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    # 3. Install dependencies
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install mlflow pandas numpy scikit-learn yellowbrick
+
+    # 4. Jalankan Training Model (MLflow Run)
+    - name: Run MLflow Project
+      run: |
+        cd MLProject
+        # --no-conda: gunakan env python yang sudah diinstall di step sebelumnya agar lebih cepat
+        mlflow run . --no-conda --experiment-name nutrition_clustering_ci
+
+    # 5. Ambil Run ID untuk Build Docker
+    - name: Get Run ID
+      id: get_run_id
+      run: |
+        cd MLProject
+        # Trik mengambil ID run terakhir dari folder mlruns (karena file-based)
+        # Mencari folder terbaru di dalam mlruns/<experiment_id>/
+        LATEST_RUN=$(ls -td mlruns/*/*/ | head -1)
+        RUN_ID=$(basename "$LATEST_RUN")
+        echo "Detected Run ID: $RUN_ID"
+        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+    # 6. Build & Push Docker Image (Khusus Advance)
+    - name: Build and Push Docker Image
+      # Hanya jalan jika push ke main dan secret tersedia
+      if: github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != ''
+      env:
+        RUN_ID: ${{ steps.get_run_id.outputs.run_id }}
+        DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PWD: ${{ secrets.DOCKER_PASSWORD }}
+        IMAGE_NAME: nutrition-clustering-model
+      run: |
+        cd MLProject
+        
+        # Login ke Docker Hub
+        echo $DOCKER_PWD | docker login -u $DOCKER_USER --password-stdin
+        
+        # Format nama image: username/image:tag
+        FULL_IMAGE_NAME="$DOCKER_USER/$IMAGE_NAME:${{ github.sha }}"
+        LATEST_IMAGE_NAME="$DOCKER_USER/$IMAGE_NAME:latest"
+        
+        echo "Building Docker Image: $FULL_IMAGE_NAME"
+        
+        # Build image menggunakan MLflow
+        mlflow models build-docker \
+          -m "runs:/$RUN_ID/model" \
+          -n "$FULL_IMAGE_NAME" \
+          --enable-mlserver
+          
+        # Push ke Docker Hub
+        docker push "$FULL_IMAGE_NAME"
+        
+        # Push tag 'latest' juga
+        docker tag "$FULL_IMAGE_NAME" "$LATEST_IMAGE_NAME"
+        docker push "$LATEST_IMAGE_NAME"
