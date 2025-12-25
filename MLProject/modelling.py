@@ -13,7 +13,6 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def main(args):
-    # Set Experiment (Optional, jika tidak diset akan masuk ke 'Default')
     mlflow.set_experiment("nutrition_clustering_kmeans")
 
     # Enable MLflow Autolog untuk sklearn
