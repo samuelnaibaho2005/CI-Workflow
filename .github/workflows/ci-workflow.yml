@@ -48,7 +48,7 @@ jobs:
     # 6. Build & Push Docker Image (Khusus Advance)
     - name: Build and Push Docker Image
       # Hanya jalan jika push ke main dan secret tersedia
-      if: github.ref == 'refs/heads/main' && secrets.DOCKER_USERNAME != ''
+      if: github.ref == 'refs/heads/main'
       env:
         RUN_ID: ${{ steps.get_run_id.outputs.run_id }}
         DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
