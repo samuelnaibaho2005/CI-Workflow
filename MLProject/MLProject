@@ -1,0 +1,16 @@
+name: nutrition-clustering
+
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      random_state: {type: int, default: 42}
+      n_init: {type: int, default: 10}
+      max_iter: {type: int, default: 300}
+      min_k: {type: int, default: 2}
+      max_k: {type: int, default: 10}
+    command: >-
+      python modelling.py 
+      --random-state {random_state} --n-init {n_init} --max-iter {max_iter}
+      --min-k {min_k} --max-k {max_k}
